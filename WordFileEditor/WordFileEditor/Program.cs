@@ -3,11 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using DocumentFormat.OpenXml;
-using DocumentFormat.OpenXml.Packaging;
-using DocumentFormat.OpenXml.Wordprocessing;
 using System.IO;
 using System.Text.RegularExpressions;
+using Microsoft.Office.Interop.Word;
 
 namespace WordFileEditor
 {
@@ -33,7 +31,7 @@ namespace WordFileEditor
         {
             string strDoc = @"C:\Temp\DocExemplo.docx";
 
-            Tag[] tags = new[] { new Tag("nome","João"), new Tag("Data","01/01/2001"), new Tag("objeto","Fusca") };
+            Tag[] tags = new[] { new Tag("nome", "João"), new Tag("Data", "01/01/2001"), new Tag("objeto", "Fusca") };
             //string strTxt = "Append text in body - OpenAndAddTextToWordDocument";
 
             List<Tag> foundedTags = FindAllTags(strDoc);
@@ -44,70 +42,36 @@ namespace WordFileEditor
         public static List<Tag> FindAllTags(string document)
         {
             List<Tag> tags = new List<Tag>();
+            object missing = System.Reflection.Missing.Value;
 
             Regex regex = new Regex(@"{{[\w,\d,\s,\.,\,\-]*}}");
 
 
-            using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(document, true))
-            {
-                string docText = null;
-                using (StreamReader sr = new StreamReader(wordDoc.MainDocumentPart.GetStream()))
-                {
-                    docText = sr.ReadToEnd();
-                }
+            Application app = new Application();
+            app.Visible = false;
+            Document doc = app.Documents.Open(@"C:\Temp\DOC TEMPLATE NAO MODIFIQUE - Copia.doc");
 
-                foreach (var item in regex.Matches(docText))
-                {
-                    tags.Add(new Tag() { Name = item.ToString().Trim('{', '}') });
-                }
+            Find findObject = app.Selection.Find;
+            findObject.ClearFormatting();
+            findObject.Text = "{{Responsavel}}";
+            findObject.Replacement.ClearFormatting();
+            findObject.Replacement.Text = "Found";
 
-            }
+            object replaceAll = WdReplace.wdReplaceAll;
 
+            findObject.Execute(ref missing, ref missing, ref missing, ref missing, ref missing,
+                               ref missing, ref missing, ref missing, ref missing, ref missing,
+                               ref replaceAll, ref missing, ref missing, ref missing, ref missing);
+
+            string content = doc.Content.Text;
+
+
+            doc.Save();
+
+            doc.Close();
+
+            app.Quit();
             return tags;
-        }
-
-
-        public static void SearchAndReplace(string document, Tag[] tags)
-        {
-            using (WordprocessingDocument wordDoc = WordprocessingDocument.Open(document, true))
-            {
-                string docText = null;
-                using (StreamReader sr = new StreamReader(wordDoc.MainDocumentPart.GetStream()))
-                {
-                    docText = sr.ReadToEnd();
-                }
-                
-                foreach (Tag tag in tags)
-                {
-                    string formatedExpression = "{{"+tag.Name+"}}";
-                    docText = Regex.Replace(docText, formatedExpression, tag.Value,RegexOptions.IgnoreCase);
-                    //docText = regexText.Replace(docText, "Hi Everyone!");
-                }
-
-
-                using (StreamWriter sw = new StreamWriter(wordDoc.MainDocumentPart.GetStream(FileMode.Create)))
-                {
-                    sw.Write(docText);
-                }
-            }
-        }
-
-        public static void OpenAndAddTextToWordDocument(string filepath, string txt)
-        {
-            // Open a WordprocessingDocument for editing using the filepath.
-            WordprocessingDocument wordprocessingDocument =
-                WordprocessingDocument.Open(filepath, true);
-
-            // Assign a reference to the existing document body.
-            Body body = wordprocessingDocument.MainDocumentPart.Document.Body;
-
-            // Add new text.
-            Paragraph para = body.AppendChild(new Paragraph());
-            Run run = para.AppendChild(new Run());
-            run.AppendChild(new Text(txt));
-
-            // Close the handle explicitly.
-            wordprocessingDocument.Close();
         }
 
     }
