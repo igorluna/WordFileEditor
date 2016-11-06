@@ -38,39 +38,56 @@ namespace WordFileEditor
             //SearchAndReplace(strDoc, tags);
             //OpenAndAddTextToWordDocument(strDoc, strTxt);
         }
-
-        public static List<Tag> FindAllTags(string document)
+        public static void SearchAndReplace(string docPath,List<Tag> tags)
         {
-            List<Tag> tags = new List<Tag>();
-            object missing = System.Reflection.Missing.Value;
-
-            Regex regex = new Regex(@"{{[\w,\d,\s,\.,\,\-]*}}");
-
-
             Application app = new Application();
             app.Visible = false;
-            Document doc = app.Documents.Open(@"C:\Temp\DOC TEMPLATE NAO MODIFIQUE - Copia.doc");
+            Document doc = app.Documents.Open(docPath);
 
-            Find findObject = app.Selection.Find;
-            findObject.ClearFormatting();
-            findObject.Text = "{{Responsavel}}";
-            findObject.Replacement.ClearFormatting();
-            findObject.Replacement.Text = "Found";
+            foreach (Tag tag in tags)
+            {
+                Find findObject = app.Selection.Find;
+                findObject.ClearFormatting();
+                //Valor da tag(deve adicionar {{}}?)
+                findObject.Text = tag.Name;
+                findObject.Replacement.ClearFormatting();
+                //Valor que o usuario digitou
+                findObject.Replacement.Text = tag.Value;
 
-            object replaceAll = WdReplace.wdReplaceAll;
+                object replaceAll = WdReplace.wdReplaceAll;
 
-            findObject.Execute(ref missing, ref missing, ref missing, ref missing, ref missing,
-                               ref missing, ref missing, ref missing, ref missing, ref missing,
-                               ref replaceAll, ref missing, ref missing, ref missing, ref missing);
+                object missing = System.Reflection.Missing.Value;
 
-            string content = doc.Content.Text;
-
+                findObject.Execute(ref missing, ref missing, ref missing, ref missing, ref missing,
+                                   ref missing, ref missing, ref missing, ref missing, ref missing,
+                                   ref replaceAll, ref missing, ref missing, ref missing, ref missing);
+            }
 
             doc.Save();
 
             doc.Close();
 
             app.Quit();
+        }
+
+        public static List<Tag> FindAllTags(string docPath)
+        {
+            List<Tag> tags = new List<Tag>();
+
+            Regex regex = new Regex(@"{{[\w,\d,\s,\.,\,\-]*}}");
+
+            Application app = new Application();
+            app.Visible = false;
+            Document doc = app.Documents.Open(docPath);
+
+            MatchCollection matches = regex.Matches(doc.Content.Text);
+
+            foreach (Match item in matches)
+            {
+                Tag tag = new Tag();
+                tag.Name = item.Value.Trim(new[] { '{', '}' });
+            }
+
             return tags;
         }
 
